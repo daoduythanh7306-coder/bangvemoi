@@ -263,7 +263,7 @@ footer span:last-child{margin-left:auto}
   <button class="hbtn" id="btn-save" title="Lưu (Ctrl+S)">
     <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
   </button>
-  
+  <button class="tbtn" id="btn-yt-numbers" title="Danh sách Video" style="width: auto; padding: 0 8px;">📺 Video</button>
   <button class="hbtn" id="btn-export-img" title="Xuất ảnh theo vùng đã vẽ">
     <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
   </button>
@@ -327,7 +327,7 @@ footer span:last-child{margin-left:auto}
 </footer>
 </div><div id="mini-panel">
   <div id="mini-hdr">
-    <span>📝 Ghi chú nhanh</span>
+    <button class="mini-btn" id="mini-tool" title="Bút/Tẩy">✏️</button>
     <button class="mini-btn" id="mini-bg" title="Đổi màu nền (trắng/đen)">🎨</button>
     <button class="mini-btn" id="mini-clear" title="Xóa trắng">🗑</button>
     <button class="mini-btn" id="mini-close" title="Đóng">✕</button>
@@ -340,6 +340,30 @@ footer span:last-child{margin-left:auto}
 
 <div id="paste-hint">📋 Thả ảnh vào đây để dán</div>
 
+<div id="yt-num-modal">
+  <div class="yt-num-content">
+    <div class="yt-num-header">
+      <h3>Chọn Video</h3><button id="yt-num-close">✕</button>
+    </div>
+    <div class="yt-num-grid">
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@konghiragica1/video/7096862487848553754">damvinhhung</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@vua.trac.nghiem/video/7351840944720760082">huugiang</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@hieu_ag4/video/7549458508454841616">phaichiu</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@thanhjuve/video/7187193668988652827">dmx</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@khongbietso69/video/7668587762479566098">hhh</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@maysonmcz4/video/7284231391213047058">tgiao3cuoi</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@kevinchess1412/video/7445258238863445255">smnguthe</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@_dmd.uc17/video/7063080445872721178">giaithich</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@lacshowbiz/video/7649806935918726421">doandibom</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@memaybeo.beo/video/7443232102960729352">lỗi tôi</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@phamthiingoc208/video/7050810149589798146">onlyC</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@thayductoan/video/7341747176822918407">dovanduc</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@tryhardffwf/video/7650129959893126421">lieunhan-gian</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@naodaunv1uehdoiten/video/7486489310934486279">chucthitot</button>
+      <button class="yt-num-btn" data-youtube="https://www.tiktok.com/@2cuocdoituoi18_3/video/7677575153227681044">3giaidoandvd</button>
+    </div>
+  </div>
+</div>
 
 <div id="toasts"></div>
 
@@ -646,7 +670,9 @@ const T={
 };
 
 const Mini = {
-  panel: null, canvas: null, ctx: null, strokes: [], drawing: false, pts: [], bg: '#1a1a24',
+  panel: null, canvas: null, ctx: null, strokes: [], drawing: false, pts: [], 
+  bg: '#ffffff', // <-- 1. Đặt mặc định màu nền là trắng khi khởi tạo
+  tool: 'pen',   // <-- Thêm biến lưu công cụ hiện tại ('pen' hoặc 'eraser')
   _drgActive: false, _drgOX: 0, _drgOY: 0,
   _resActive: false, _resW: 0, _resH: 0, _resX: 0, _resY: 0,
 
@@ -698,16 +724,42 @@ const Mini = {
 
     document.getElementById('mini-close').addEventListener('click', () => this.panel.classList.remove('visible'));
     document.getElementById('mini-clear').addEventListener('click', () => { this.strokes = []; this._redraw(); });
-    document.getElementById('mini-bg').addEventListener('click', () => { this.bg = this.bg === '#1a1a24' ? '#ffffff' : '#1a1a24'; this._redraw(); });
+    
+    document.getElementById('mini-bg').addEventListener('click', () => { 
+      this.bg = this.bg === '#ffffff' ? '#1a1a24' : '#ffffff'; 
+      this._redraw(); 
+    });
+
+    // 2. Lắng nghe sự kiện bấm nút chuyển Bút / Tẩy cho trang nhỏ
+    const toolBtn = document.getElementById('mini-tool');
+    toolBtn.addEventListener('click', () => {
+      this.tool = this.tool === 'pen' ? 'eraser' : 'pen';
+      toolBtn.textContent = this.tool === 'pen' ? '✏️' : '🧹';
+      toolBtn.classList.toggle('on', this.tool === 'eraser');
+    });
 
     this.canvas.addEventListener('pointerdown', e => { e.preventDefault(); this.canvas.setPointerCapture(e.pointerId); const r = this.canvas.getBoundingClientRect(); this.drawing = true; this.pts = [e.clientX - r.left, e.clientY - r.top]; });
     this.canvas.addEventListener('pointermove', e => { if(!this.drawing) return; const r = this.canvas.getBoundingClientRect(); this.pts.push(e.clientX - r.left, e.clientY - r.top); this._redraw(); });
-    this.canvas.addEventListener('pointerup', () => { if(this.drawing) { this.strokes.push({col: State.color, sz: 2, pts: [...this.pts]}); this.drawing = false; this._redraw(); } });
+    this.canvas.addEventListener('pointerup', () => { 
+      if(this.drawing) { 
+        // Lưu nét vẽ hoặc nét tẩy vào mảng strokes của trang nhỏ
+        if(this.tool === 'pen') {
+          this.strokes.push({type: 'pen', col: State.color, sz: 3, pts: [...this.pts]}); 
+        } else if(this.tool === 'eraser') {
+          this.strokes.push({type: 'eraser', sz: 20, pts: [...this.pts]});
+        }
+        this.drawing = false; 
+        this._redraw(); 
+      } 
+    });
   },
 
   toggle() {
     this.panel.classList.toggle('visible');
-    if(this.panel.classList.contains('visible')) { this._syncCanvas(); }
+    if(this.panel.classList.contains('visible')) { 
+      this.bg = '#ffffff'; // <-- 3. Ép buộc mặc định màu trắng mỗi lần mở bảng
+      this._syncCanvas(); 
+    }
   },
 
   _syncCanvas() {
@@ -718,22 +770,71 @@ const Mini = {
     this._redraw();
   },
 
-  _redraw() { 
+
+
+_redraw() { 
     const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // 1. Vẽ màu nền trước tiên lên canvas chính
     ctx.fillStyle = this.bg;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); 
+
+    // 2. Tạo một canvas tạm (offscreen) chuyên chứa nét vẽ để cục tẩy hoạt động chính xác
+    const offC = document.createElement('canvas');
+    offC.width = this.canvas.width; offC.height = this.canvas.height;
+    const oCtx = offC.getContext('2d');
+
+    // Vẽ lần lượt các nét chữ/tẩy đã lưu vào offscreen canvas
     this.strokes.forEach(s => { 
-      ctx.beginPath(); ctx.strokeStyle = s.col; ctx.lineWidth = s.sz; ctx.moveTo(s.pts[0], s.pts[1]); 
-      for(let i = 2; i < s.pts.length; i += 2) ctx.lineTo(s.pts[i], s.pts[i+1]); 
-      ctx.stroke(); 
+      oCtx.save();
+      oCtx.beginPath(); 
+      oCtx.lineWidth = s.sz || (s.type === 'eraser' ? 20 : 3);
+      oCtx.lineCap = 'round';
+      oCtx.lineJoin = 'round';
+      
+      // Nếu là nét tẩy, dùng destination-out để khoét rỗng nét vẽ
+      if(s.type === 'eraser') {
+        oCtx.globalCompositeOperation = 'destination-out';
+      } else {
+        oCtx.globalCompositeOperation = 'source-over';
+        oCtx.strokeStyle = s.col || '#000000';
+      }
+      
+      oCtx.moveTo(s.pts[0], s.pts[1]); 
+      for(let i = 2; i < s.pts.length; i += 2) oCtx.lineTo(s.pts[i], s.pts[i+1]); 
+      oCtx.stroke(); 
+      oCtx.restore();
     }); 
+
+    // Vẽ nét đang thao tác trực tiếp trên tay người dùng
     if(this.drawing) { 
-      ctx.beginPath(); ctx.strokeStyle = State.color; ctx.lineWidth = 2; ctx.moveTo(this.pts[0], this.pts[1]); 
-      for(let i = 2; i < this.pts.length; i += 2) ctx.lineTo(this.pts[i], this.pts[i+1]); 
-      ctx.stroke(); 
+      oCtx.save();
+      oCtx.beginPath(); 
+      oCtx.lineWidth = this.tool === 'eraser' ? 20 : 3;
+      oCtx.lineCap = 'round';
+      oCtx.lineJoin = 'round';
+      
+      if(this.tool === 'eraser') {
+        oCtx.globalCompositeOperation = 'destination-out';
+      } else {
+        oCtx.globalCompositeOperation = 'source-over';
+        oCtx.strokeStyle = State.color;
+      }
+      
+      oCtx.moveTo(this.pts[0], this.pts[1]); 
+      for(let i = 2; i < this.pts.length; i += 2) oCtx.lineTo(this.pts[i], this.pts[i+1]); 
+      oCtx.stroke(); 
+      oCtx.restore();
     } 
+
+    // 3. Ghép lớp nét vẽ (đã được tẩy sạch đúng chuẩn) đè lên trên nền
+    ctx.drawImage(offC, 0, 0);
+
   }
 };
+
+
 
 function switchPage(idx){
   State.page().vp={x:CV.vpX,y:CV.vpY,scale:CV.scale}; State.cur=idx; const p=State.page();
